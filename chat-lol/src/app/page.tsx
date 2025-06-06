@@ -10,24 +10,8 @@ import {
   createDataChannel as createWebRTCDataChannel,
   sendData as sendWebRTCData,
   closeConnection as closeWebRTCConnection,
-  getPeerConnection,
-  getDataChannel,
 } from "../lib/webrtc";
 
-// Assuming shadcn/ui components are in these paths
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area"; // For chat messages
-import { Info, MessageSquare, Settings, AlertTriangle, Copy, Send, RotateCcw } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
 import InitialView from "./components/InitialView";

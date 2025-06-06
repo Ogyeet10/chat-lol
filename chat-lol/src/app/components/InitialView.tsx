@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Rocket, UserPlus, User as UserIcon, UploadCloud, Image as ImageIcon } from "lucide-react";
-import Image from 'next/image';
 
 interface InitialViewProps {
   onInitiate: (username: string, pfpDataUrl: string | null) => void;

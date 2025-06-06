@@ -11,7 +11,6 @@ import {
   DialogFooter 
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input"; // For step 2
 import { Loader2, ArrowRight, Copy, Send } from 'lucide-react';
 
 interface InitiatorFlowDialogProps {
