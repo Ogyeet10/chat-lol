@@ -21,13 +21,6 @@ interface MainChatInterfaceProps {
   onLogout: () => void;
 }
 
-interface ConnectionRequest {
-  _id: string;
-  fromSessionId: string;
-  fromUsername: string;
-  requestData?: any;
-  createdAt: number;
-}
 
 export default function MainChatInterface({ currentUsername, sessionId, isSessionActive, onLogout }: MainChatInterfaceProps) {
   const [activeView, setActiveView] = useState<'main' | 'friends' | 'connect'>('main');
@@ -52,81 +45,43 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
 
   const auth = authStorage.getAuth();
 
-  // Debug auth token and session
-  console.log('🔌 DEBUG: Auth and session state for incoming requests query:', {
-    hasToken: !!auth.token,
-    username: auth.username,
-    tokenLength: auth.token?.length,
-    sessionId: sessionId,
-    hasSession: !!sessionId
-  });
-
-  console.log('🔌 DEBUG: Setting up useQuery with args:', auth.token && sessionId ? { userToken: auth.token, sessionId: sessionId } : "skip");
-
-  // Get incoming connection requests - now reactive to session changes
-  const incomingRequests = useQuery(
-    api.webrtc_signaling.getSentConnectionRequests,
-    auth.token && sessionId ? { userToken: auth.token, sessionId: sessionId } : "skip"
+  // Monitor for incoming connection offers
+  const incomingOffers = useQuery(api.peerConnections.getConnectionOffers, 
+    sessionId && auth.token ? { sessionId, userToken: auth.token } : "skip"
   );
 
-  console.log('🔌 DEBUG: useQuery returned - value:', incomingRequests);
-  console.log('🔌 DEBUG: useQuery returned - type:', typeof incomingRequests);
-  console.log('🔌 DEBUG: useQuery returned - is array?', Array.isArray(incomingRequests));
-  console.log('🔌 DEBUG: Query skipped?', !auth.token);
-
-  // Effect to handle auto-connecting to incoming requests
+  // Auto-handle incoming connection offers (for receivers)
   useEffect(() => {
-    console.log('🔌 DEBUG: useEffect triggered - incomingRequests value:', incomingRequests);
-    console.log('🔌 DEBUG: useEffect triggered - activeConnection:', activeConnection?.username || 'none');
-    
-    // Log all incoming request snapshots
-    if (incomingRequests) {
-      console.log('🔌 DEBUG: Received connection request snapshot:', JSON.stringify(incomingRequests, null, 2));
-      if (incomingRequests.length > 0) {
-        console.log(`🔌 DEBUG: Found ${incomingRequests.length} pending connection request(s)`);
-        incomingRequests.forEach((req, index) => {
-          console.log(`🔌 DEBUG: Request ${index + 1}: from ${req.fromUsername} (session: ${req.fromSessionId})`);
-        });
-      } else {
-        console.log('🔌 DEBUG: No pending connection requests found');
-      }
-    }
+    if (!incomingOffers || incomingOffers.length === 0 || activeConnection || pendingConnection) return;
 
-    // Only process if we don't already have an active or pending connection
-    if (!activeConnection && !pendingConnection && incomingRequests && incomingRequests.length > 0) {
-      const requestToProcess = incomingRequests[0]; // Process the most recent one
+    // Find unprocessed offers
+    const newOffer = incomingOffers.find(offer => 
+      offer.status === "offered" && !processedRequestsRef.current.has(offer.connectionId)
+    );
+
+    if (newOffer) {
+      console.log('📥 Incoming connection offer detected:', newOffer);
       
-      // Check if we've already processed this request
-      if (processedRequestsRef.current.has(requestToProcess._id)) {
-        console.log('🔌 DEBUG: Request already processed, skipping:', requestToProcess._id);
-        return;
-      }
+      // Mark as processed
+      processedRequestsRef.current.add(newOffer.connectionId);
       
-      console.log("🔌 DEBUG: Auto-accepting incoming request from:", requestToProcess.fromUsername);
-      console.log("🔌 DEBUG: Request details:", JSON.stringify(requestToProcess, null, 2));
+      // Extract source user info
+      const sourceUsername = newOffer.sourceUser?.username || 'Unknown User';
       
-      // Mark this request as processed
-      processedRequestsRef.current.add(requestToProcess._id);
-      
-      toast.info(`Incoming connection from ${requestToProcess.fromUsername}`);
-      
-      setPendingConnection({
-        sessionId: requestToProcess.fromSessionId,
-        username: requestToProcess.fromUsername,
-        requestId: requestToProcess._id,
-        isInitiator: false,
-        offerData: requestToProcess.requestData,
+      // Show notification
+      toast.info(`Incoming connection from ${sourceUsername}`, {
+        description: "Setting up connection automatically..."
       });
-      // Switch to main chat view on auto-accept
-      setActiveView('main');
-    } else if (!activeConnection && !pendingConnection && incomingRequests && incomingRequests.length === 0) {
-      console.log('🔌 DEBUG: No action taken - no pending requests to process');
-    } else if (activeConnection) {
-      console.log('🔌 DEBUG: No action taken - already have active connection with:', activeConnection.username);
-    } else if (pendingConnection) {
-      console.log('🔌 DEBUG: No action taken - already have pending connection with:', pendingConnection.username);
+      
+      // Auto-connect to the offer (Client 2 becomes receiver)
+      handleConnectionEstablished(
+        newOffer.sessionId, // Source session that initiated
+        sourceUsername,
+        newOffer.connectionId,
+        false // isInitiator = false (we're receiving)
+      );
     }
-  }, [incomingRequests, activeConnection, pendingConnection]);
+  }, [incomingOffers, activeConnection, pendingConnection]);
 
 
   const handleConnectionEstablished = (targetSessionId: string, username: string, requestId?: string, isInitiator: boolean = true) => {
@@ -170,11 +125,6 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
               >
                 <MessageCircle className="h-4 w-4 mr-1" />
                 Chat
-                {incomingRequests && incomingRequests.length > 0 && !activeConnection && !pendingConnection && (
-                  <span className="ml-1 bg-destructive text-destructive-foreground rounded-full text-xs px-1.5 py-0.5 animate-pulse">
-                    {incomingRequests.length}
-                  </span>
-                )}
               </Button>
               <Button
                 variant={activeView === 'friends' ? 'default' : 'ghost'}
@@ -295,10 +245,11 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
         {activeView === 'connect' ? (
           <div className="flex-grow flex items-center justify-center p-4">
             <WebRTCFriendSelector 
+              sessionId={sessionId}
               onBack={() => setActiveView('main')}
-              onStartChatWithFriend={(sessionId, friendUserId, friendUsername, isInitiator) => {
-                // sessionId is the target session ID we're connecting to
-                handleConnectionEstablished(sessionId, friendUsername, undefined, isInitiator);
+              onStartChatWithFriend={(targetSessionId, friendUserId, friendUsername, isInitiator) => {
+                // targetSessionId is the target session ID we're connecting to
+                handleConnectionEstablished(targetSessionId, friendUsername, undefined, isInitiator);
               }}
             />
           </div>

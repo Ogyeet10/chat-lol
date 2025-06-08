@@ -19,13 +19,13 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { authStorage } from "@/lib/auth";
 import { toast } from 'sonner';
-
 interface WebRTCFriendSelectorProps {
+  sessionId: string | null;
   onBack: () => void;
   onStartChatWithFriend: (chatId: string, friendUserId: string, friendUsername: string, isInitiator: boolean) => void;
 }
 
-export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: WebRTCFriendSelectorProps) {
+export default function WebRTCFriendSelector({ sessionId, onBack, onStartChatWithFriend }: WebRTCFriendSelectorProps) {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
   const [selectedFriendUsername, setSelectedFriendUsername] = useState<string | null>(null);
   const [friendSessions, setFriendSessions] = useState<any[]>([]);
@@ -42,8 +42,10 @@ export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: 
   // Get friend's active sessions
   const getFriendSessions = useMutation(api.friends.getFriendActiveSessions);
   
-  // Send connection request (new simplified system)
-  const sendConnectionRequest = useMutation(api.webrtc_signaling.sendConnectionRequest);
+  // Create connection offer
+  const createConnectionOffer = useMutation(api.peerConnections.createConnectionOffer);
+  
+  // WebRTC removed - no connection requests
 
   const handleSelectFriend = async (friendUserId: string, friendUsername: string, useActivePing: boolean = false) => {
     if (!auth.token) {
@@ -97,26 +99,55 @@ export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: 
     }
   };
 
-  const handleConnectToSession = async (sessionId: string) => {
-    if (!auth.token || !selectedFriendId || !selectedFriendUsername) {
-      toast.error("Missing required information");
+  const handleConnectToSession = async (targetSessionId: string) => {
+    console.log('🔍 Debug connection info:', {
+      'auth.token': !!auth.token,
+      'selectedFriendUsername': selectedFriendUsername,
+      'sessionId': sessionId,
+      'targetSessionId': targetSessionId
+    });
+
+    if (!auth.token) {
+      toast.error("Missing authentication token");
+      return;
+    }
+    
+    if (!selectedFriendUsername) {
+      toast.error("No friend selected");
+      return;
+    }
+    
+    if (!sessionId) {
+      toast.error("No session ID available");
       return;
     }
 
     try {
-      toast.info("Sending connection request...", {
-        description: `Connecting to ${selectedFriendUsername}'s session`
+      // First, create connection offer in database
+      const connectionResult = await createConnectionOffer({
+        sessionId: sessionId,
+        targetSessionId: targetSessionId,
+        userToken: auth.token,
+        connectionData: {
+          initiatedAt: Date.now(),
+          initiatorUsername: auth.username
+        }
       });
 
-      // Start the chat directly - SimpleWebRTCChat will handle sending the connection request
-      toast.info("Starting connection...", {
-        description: `Connecting to ${selectedFriendUsername}'s session`
-      });
+      console.log("✅ Connection offer created:", connectionResult);
 
-      // Start the chat with the session ID as the "chat ID"
-      onStartChatWithFriend(sessionId, selectedFriendId, selectedFriendUsername, true);
+      // Then start the chat with the selected friend's session
+      onStartChatWithFriend(
+        `chat_${targetSessionId}`, // chatId
+        selectedFriendId!, // friendUserId  
+        selectedFriendUsername, // friendUsername
+        true // isInitiator (we're initiating the connection)
+      );
+      
+      toast.success(`Connection offer sent to ${selectedFriendUsername}!`);
     } catch (error: any) {
-      toast.error("Failed to send connection request", {
+      console.error("❌ Failed to start chat:", error);
+      toast.error("Failed to start chat", {
         description: error.message || "Please try again"
       });
     }
@@ -153,7 +184,7 @@ export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: 
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            {selectedFriendId ? `${selectedFriendUsername}'s Sessions` : 'Select Friend for WebRTC Chat'}
+            {selectedFriendId ? `${selectedFriendUsername}'s Sessions` : 'Select Friend for PeerJS Chat'}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -163,6 +194,13 @@ export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: 
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {!sessionId && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
+            <p className="font-medium text-yellow-900">Session Initializing...</p>
+            <p className="text-yellow-700 text-xs mt-1">Please wait while your session is being set up.</p>
+          </div>
+        )}
+        
         {!selectedFriendId ? (
           // Friend selection view
           <div>
@@ -170,7 +208,7 @@ export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: 
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">No friends yet</p>
-                <p className="text-sm mt-1">Add some friends to start WebRTC chats!</p>
+                <p className="text-sm mt-1">Add some friends to start PeerJS chats!</p>
               </div>
             ) : (
               <ScrollArea className="h-64">
@@ -304,10 +342,12 @@ export default function WebRTCFriendSelector({ onBack, onStartChatWithFriend }: 
                       <Button
                         size="sm"
                         onClick={() => handleConnectToSession(session.sessionId)}
-                        className="bg-primary hover:bg-primary/90"
+                        disabled={!sessionId}
+                        className="bg-primary hover:bg-primary/90 disabled:opacity-50"
+                        title={!sessionId ? "Waiting for session to be ready..." : "Connect to this session"}
                       >
                         <MessageCircle className="h-3 w-3 mr-1" />
-                        Connect
+                        {!sessionId ? "Loading..." : "Connect"}
                       </Button>
                     </div>
                   </div>

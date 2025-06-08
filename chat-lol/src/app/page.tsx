@@ -43,12 +43,15 @@ export default function Home() {
 
   // Handle session initialization and cleanup
   useEffect(() => {
+    console.log('🎯 page.tsx useEffect triggered - isAuthenticated:', isAuthenticated);
     if (isAuthenticated) {
+      console.log('🚀 page.tsx calling initializeSession');
       initializeSession();
     } else {
+      console.log('🧹 page.tsx calling cleanupSession');
       cleanupSession();
     }
-  }, [isAuthenticated, initializeSession, cleanupSession]);
+  }, [isAuthenticated]); // Remove function dependencies to prevent re-initialization cycles
 
   const handleSignupSuccess = (token: string, username: string) => {
     authStorage.saveAuth(token, username);

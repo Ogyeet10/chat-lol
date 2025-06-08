@@ -43,10 +43,11 @@ export function useSession() {
     setIsSessionActive(false);
     sessionStorage.clearSessionId();
     console.log('✅ Session cleanup complete');
-  }, [deactivateSession]);
+  }, []); // Remove dependency to prevent recreation
 
   const initializeSession = useCallback(async () => {
-    console.log('🚀 initializeSession called');
+    console.log('🚀 initializeSession called - STACK TRACE:');
+    console.trace(); // Add stack trace to see what's calling this
     await cleanupSession(); // Start fresh
 
     const auth = authStorage.getAuth();
@@ -90,7 +91,7 @@ export function useSession() {
     } catch (error) {
       console.error('❌ Failed to initialize session:', error);
     }
-  }, [createSession, updateSessionPing, cleanupSession]);
+  }, []); // Remove dependencies to prevent recreation
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -108,7 +109,7 @@ export function useSession() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       cleanupSession();
     };
-  }, [cleanupSession]);
+  }, []); // Remove cleanupSession dependency since it's now stable
 
   return {
     sessionId,
