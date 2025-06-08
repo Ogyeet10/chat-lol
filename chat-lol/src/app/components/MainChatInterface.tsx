@@ -78,18 +78,26 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
         newOffer.sessionId, // Source session that initiated
         sourceUsername,
         newOffer.connectionId,
-        false // isInitiator = false (we're receiving)
+        false, // isInitiator = false (we're receiving)
+        newOffer.connectionData // Pass the offer data from the incoming connection
       );
     }
   }, [incomingOffers, activeConnection, pendingConnection]);
 
 
-  const handleConnectionEstablished = (targetSessionId: string, username: string, requestId?: string, isInitiator: boolean = true) => {
+  const handleConnectionEstablished = (
+    targetSessionId: string, 
+    username: string, 
+    requestId?: string, 
+    isInitiator: boolean = true,
+    offerSignalData?: any // Added to accept offer data for receivers
+  ) => {
     setPendingConnection({
       sessionId: targetSessionId,
       username,
       requestId,
-      isInitiator
+      isInitiator,
+      offerData: offerSignalData // Store the offer data
     });
     setActiveView('main');
   };
@@ -244,17 +252,18 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
       <main className="flex-grow flex flex-col">
         {activeView === 'connect' ? (
           <div className="flex-grow flex items-center justify-center p-4">
-            <WebRTCFriendSelector 
+            <WebRTCFriendSelector
               sessionId={sessionId}
               onBack={() => setActiveView('main')}
-              onStartChatWithFriend={(targetSessionId, friendUserId, friendUsername, isInitiator) => {
-                // targetSessionId is the target session ID we're connecting to
-                handleConnectionEstablished(targetSessionId, friendUsername, undefined, isInitiator);
+              onStartChatWithFriend={(targetSessionId, friendUserId, friendUsername, isInitiator, connectionId) => {
+                // The connectionId from the selector is passed as requestId
+                handleConnectionEstablished(targetSessionId, friendUsername, connectionId, isInitiator);
               }}
             />
           </div>
         ) : activeConnection ? (
           <SimpleWebRTCChat
+            userSessionId={sessionId!}
             targetSessionId={activeConnection.sessionId}
             otherUsername={activeConnection.username}
             requestId={activeConnection.requestId}
@@ -265,6 +274,7 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
           />
         ) : pendingConnection ? (
           <SimpleWebRTCChat
+            userSessionId={sessionId!}
             targetSessionId={pendingConnection.sessionId}
             otherUsername={pendingConnection.username}
             requestId={pendingConnection.requestId}

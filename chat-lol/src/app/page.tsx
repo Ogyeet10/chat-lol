@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Toaster, toast } from 'sonner';
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -41,17 +41,16 @@ export default function Home() {
     }
   }, [validateToken]);
 
-  // Handle session initialization and cleanup
+  // Handle session initialization on login and cleanup on logout (skip initial)
+  const hasSessionInitializedRef = useRef(false);
   useEffect(() => {
-    console.log('🎯 page.tsx useEffect triggered - isAuthenticated:', isAuthenticated);
     if (isAuthenticated) {
-      console.log('🚀 page.tsx calling initializeSession');
       initializeSession();
-    } else {
-      console.log('🧹 page.tsx calling cleanupSession');
+      hasSessionInitializedRef.current = true;
+    } else if (hasSessionInitializedRef.current) {
       cleanupSession();
     }
-  }, [isAuthenticated]); // Remove function dependencies to prevent re-initialization cycles
+  }, [isAuthenticated]);
 
   const handleSignupSuccess = (token: string, username: string) => {
     authStorage.saveAuth(token, username);
@@ -60,6 +59,8 @@ export default function Home() {
   };
 
   const handleLogout = () => {
+    // Explicitly clean up session on user logout
+    cleanupSession();
     authStorage.clearAuth();
     setCurrentUser(null);
     setIsAuthenticated(false);

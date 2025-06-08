@@ -7,8 +7,8 @@ import { sessionStorage } from '@/lib/session';
 import { authStorage } from '@/lib/auth';
 
 export function useSession() {
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(() => sessionStorage.getCurrentSessionId());
+  const [isSessionActive, setIsSessionActive] = useState(() => !!sessionStorage.getCurrentSessionId());
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const createSession = useMutation(api.sessions.createSession);
@@ -16,7 +16,8 @@ export function useSession() {
   const deactivateSession = useMutation(api.sessions.deactivateSession);
 
   const cleanupSession = useCallback(async () => {
-    console.log('🧹 Cleaning up session...');
+    console.log('🧹 Cleaning up session... STACK TRACE:');
+    console.trace(); // Add stack trace to see what's calling cleanup
     const currentSessionId = sessionStorage.getCurrentSessionId();
 
     if (pingIntervalRef.current) {
@@ -48,7 +49,6 @@ export function useSession() {
   const initializeSession = useCallback(async () => {
     console.log('🚀 initializeSession called - STACK TRACE:');
     console.trace(); // Add stack trace to see what's calling this
-    await cleanupSession(); // Start fresh
 
     const auth = authStorage.getAuth();
     console.log('📋 Auth state:', { isAuth: auth.isAuthenticated, hasToken: !!auth.token });
@@ -107,7 +107,6 @@ export function useSession() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      cleanupSession();
     };
   }, []); // Remove cleanupSession dependency since it's now stable
 

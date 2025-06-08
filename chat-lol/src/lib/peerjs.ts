@@ -41,7 +41,13 @@ export class PeerJSService {
     username: string,
     targetSessionId?: string
   ): Promise<void> {
+    if (this.peer && this.peer.id === connectionId && !this.peer.destroyed) {
+      console.log('ℹ️ PeerJS already initialized for this ID, skipping recreation:', connectionId);
+      return;
+    }
+
     if (this.peer) {
+      console.log('🧹 Cleaning up old PeerJS instance before creating a new one.');
       this.cleanup();
     }
 

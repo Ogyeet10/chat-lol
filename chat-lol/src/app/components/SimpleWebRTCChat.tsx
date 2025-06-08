@@ -7,25 +7,28 @@ import ChatRoom from "./ChatRoom";
 import { peerJSService, PeerMessage } from "@/lib/peerjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useSession } from "@/hooks/useSession";
 
 interface SimpleWebRTCChatProps {
+  /** The local user's session ID, passed from the root component */
+  userSessionId: string;
+  /** The target peer's session ID */
   targetSessionId: string;
   otherUsername: string;
   requestId?: string;
-  onLeaveChat: () => void;
   isInitiator: boolean;
   offerData?: any;
+  onLeaveChat: () => void;
   onConnectionReady?: () => void;
 }
 
 export default function SimpleWebRTCChat({ 
+  userSessionId,
   targetSessionId, 
   otherUsername, 
   requestId, 
-  onLeaveChat,
   isInitiator,
   offerData,
+  onLeaveChat,
   onConnectionReady
 }: SimpleWebRTCChatProps) {
   const [connectionStatus, setConnectionStatus] = useState("Initializing...");
@@ -39,12 +42,14 @@ export default function SimpleWebRTCChat({
   const cleanupDone = useRef(false);
 
   const auth = authStorage.getAuth();
-  const { sessionId } = useSession();
+  // Use the passed-in root session ID
+  const sessionId = userSessionId;
 
   const createConnectionOffer = useMutation(api.peerConnections.createConnectionOffer);
   const updateConnectionStatus = useMutation(api.peerConnections.updateConnectionStatus);
   const disconnectConnection = useMutation(api.peerConnections.disconnectConnection);
   
+  // Incoming connection offers against the local session
   const connectionOffers = useQuery(api.peerConnections.getConnectionOffers, 
     sessionId && auth.token ? { sessionId, userToken: auth.token } : "skip"
   );
@@ -58,23 +63,19 @@ export default function SimpleWebRTCChat({
         setConnectionStatus("Setting up connection...");
         
         if (isInitiator) {
-          // Create connection offer
-          const result = await createConnectionOffer({
-            sessionId,
-            targetSessionId,
-            userToken: auth.token!,
-            connectionData: { username: auth.username, isInitiator: true }
-          });
+          // The offer is created by the parent, and connectionId is passed as 'requestId'
+          if (!connectionId) {
+            toast.error("Initialization Error: Connection ID is missing.");
+            setConnectionStatus("Error: No Connection ID");
+            return;
+          }
 
-          const connId = result.connectionId;
-          setConnectionId(connId);
-
-          // Initialize peer with connection ID
-          await peerJSService.initializePeer(connId, sessionId, auth.username!, targetSessionId);
+          // Initialize peer with the existing connection ID
+          await peerJSService.initializePeer(connectionId, sessionId, auth.username!, targetSessionId);
           setConnectionStatus(`Waiting for ${otherUsername} to connect...`);
           
         } else {
-          // Wait for incoming connection offer, then connect
+          // Receiver logic: wait for an incoming offer from the query.
           setConnectionStatus("Looking for connection offer...");
         }
 
@@ -87,7 +88,7 @@ export default function SimpleWebRTCChat({
     };
 
     initializeConnection();
-  }, [sessionId, auth.token, auth.username, isInitiator, targetSessionId, otherUsername, createConnectionOffer]);
+  }, [sessionId, auth.token, auth.username, isInitiator, targetSessionId, otherUsername, connectionId]);
 
   // Handle incoming connection offers (for receivers)
   useEffect(() => {
@@ -179,7 +180,6 @@ export default function SimpleWebRTCChat({
         setDataChannelState("open");
         setIsConnected(true);
         onConnectionReady?.();
-        toast.success(`Connected to ${otherUsername}!`);
       } else {
         setConnectionStatus("Disconnected");
         setDataChannelState("closed");
@@ -248,13 +248,6 @@ export default function SimpleWebRTCChat({
     cleanup();
     onLeaveChat();
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanup();
-    };
-  }, [cleanup]);
 
   return (
     <ChatRoom
