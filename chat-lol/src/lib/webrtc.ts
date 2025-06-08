@@ -1,5 +1,4 @@
-let peerConnection: RTCPeerConnection | null = null;
-let dataChannel: RTCDataChannel | null = null;
+// Removed global state - each component manages its own connections
 
 type WebRTCListeners = {
   onDataChannelOpened?: (channel: RTCDataChannel) => void;
@@ -10,48 +9,47 @@ type WebRTCListeners = {
 };
 
 export function createPeerConnection(listeners: WebRTCListeners): RTCPeerConnection {
-  peerConnection = new RTCPeerConnection();
+  // Use STUN server for NAT traversal
+  const pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  });
 
-  peerConnection.onicecandidate = (event) => {
+  pc.onicecandidate = (event) => {
     if (event.candidate && listeners.onIceCandidate) {
       listeners.onIceCandidate(event.candidate);
     }
   };
 
-  peerConnection.onconnectionstatechange = (event) => {
+  pc.onconnectionstatechange = (event) => {
     if (listeners.onConnectionStateChange) {
       listeners.onConnectionStateChange(event);
-    }
-    // Example: console.log('Peer Connection State:', peerConnection?.connectionState);
-    if (peerConnection?.connectionState === 'connected' && dataChannel?.readyState === 'open') {
-        // Potentially already handled by onDataChannelOpened
     }
   };
 
   // For receiving data channels from the remote peer
-  peerConnection.ondatachannel = (event) => {
+  pc.ondatachannel = (event) => {
     console.log('ondatachannel event:', event);
-    dataChannel = event.channel;
-    setupDataChannelListeners(dataChannel, listeners);
+    const channel = event.channel;
+    setupDataChannelListeners(channel, listeners);
     if (listeners.onDataChannelOpened) {
-      listeners.onDataChannelOpened(dataChannel);
+      listeners.onDataChannelOpened(channel);
     }
   };
   
   // For receiving audio/video tracks (placeholder for now)
-  peerConnection.ontrack = (event) => {
+  pc.ontrack = (event) => {
     if (listeners.onTrack) {
         listeners.onTrack(event);
     }
   };
 
-  return peerConnection;
+  return pc;
 }
 
 function setupDataChannelListeners(channel: RTCDataChannel, listeners: WebRTCListeners) {
   channel.onopen = () => {
     console.log('Data channel opened:', channel.label);
-    if (listeners.onDataChannelOpened && channel === dataChannel) { // Ensure it's the primary data channel we manage
+    if (listeners.onDataChannelOpened) {
       listeners.onDataChannelOpened(channel);
     }
   };
@@ -77,9 +75,30 @@ export async function createOffer(pc: RTCPeerConnection): Promise<RTCSessionDesc
 
 export async function createAnswer(pc: RTCPeerConnection, offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
   if (!pc) throw new Error('PeerConnection not initialized');
-  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  console.log('🔌 DEBUG: webrtc.createAnswer - Setting remote description...');
+  console.log('🔌 DEBUG: PC state before setRemoteDescription:', {
+    connectionState: pc.connectionState,
+    iceConnectionState: pc.iceConnectionState,
+    iceGatheringState: pc.iceGatheringState,
+    signalingState: pc.signalingState,
+    localDescription: pc.localDescription,
+    remoteDescription: pc.remoteDescription
+  });
+  
+  try {
+    await Promise.race([
+      pc.setRemoteDescription(new RTCSessionDescription(offer)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('setRemoteDescription timeout')), 10000))
+    ]);
+  } catch (error) {
+    console.error('🔌 DEBUG: setRemoteDescription failed:', error);
+    throw error;
+  }
+  console.log('🔌 DEBUG: webrtc.createAnswer - Creating answer...');
   const answer = await pc.createAnswer();
+  console.log('🔌 DEBUG: webrtc.createAnswer - Setting local description...');
   await pc.setLocalDescription(answer);
+  console.log('🔌 DEBUG: webrtc.createAnswer - Answer created successfully');
   return answer;
 }
 
@@ -96,47 +115,6 @@ export async function addIceCandidate(pc: RTCPeerConnection, candidate: RTCIceCa
 export function createDataChannel(pc: RTCPeerConnection, label: string = 'chat'): RTCDataChannel {
   if (!pc) throw new Error('PeerConnection not initialized');
   const newDataChannel = pc.createDataChannel(label);
-  dataChannel = newDataChannel; // Assume this is the primary data channel we want to manage for sending
-  // Listeners are passed during createPeerConnection, setupDataChannelListeners will be called for the new channel too
-  // if it's created by the local peer. If by remote, ondatachannel handles it.
-  // Re-calling setupDataChannelListeners here for the locally created channel.
-  // This requires listeners to be accessible, or passed again. For simplicity, assuming they are.
-  // This part needs careful handling of listeners context if createPeerConnection isn't called again.
-  // For now, global listeners are implicitly used or we rely on ondatachannel for remote ones.
-  // Let's refine this by ensuring listeners are correctly applied.
-  // The current structure implies listeners are passed to createPeerConnection.
-  // We need a way to pass those listeners to setupDataChannelListeners if called from here.
-  // A better approach might be to get listeners from a shared context or re-architect.
-  // For now, we'll assume setupDataChannelListeners is mainly for the ondatachannel event.
-  // The listeners on the *created* data channel need to be setup.
-  
-  // Simplified: If listeners were passed to createPeerConnection, they should be used.
-  // This is tricky as createPeerConnection returns pc, but doesn't keep listeners in global scope
-  // explicitly for this function to reuse.
-  // A quick fix would be to pass listeners again, or store them with the peerConnection instance.
-  // For now, let's assume listeners passed to createPeerConnection will have onDataChannelMessage, etc.
-  // and setup them directly on the new channel.
-  
-  // Let's assume listeners are available through a closure or passed:
-  // (This is a placeholder for a proper listener management strategy)
-  // For instance, we could store listeners in a global variable or pass them around.
-  
-  // Direct setup for locally created channel:
-  // This will be problematic if listeners are not accessible here.
-  // The listeners need to be passed or stored associated with the peerConnection.
-  // *Correction*: setupDataChannelListeners should be called on this newly created channel
-  // using the *same* listeners object that was passed to createPeerConnection.
-  // This is a structural challenge with the current simple export model.
-  // I will assume listeners are implicitly available or this will be refactored in page.tsx to pass them.
-  // For now, the onopen and onmessage for this *locally* created channel are crucial.
-
-  // Example: If listeners were globally stored for the current peer connection context:
-  // setupDataChannelListeners(newDataChannel, currentPClisteners);
-  
-  // The ondatachannel callback in createPeerConnection will handle setting up listeners for remotely created channels.
-  // For locally created channels, we need to set them up directly.
-  // It's cleaner if data channel creation and its listener setup is more tightly coupled with createPeerConnection context.
-  // Let's defer full listener setup for locally created channel to page.tsx or expect onopen to be sufficient for now.
   console.log('Data channel created by local peer:', label);
   return newDataChannel;
 }
@@ -150,23 +128,12 @@ export function sendData(dc: RTCDataChannel, message: string): void {
   }
 }
 
-export function closeConnection(): void {
-  if (dataChannel) {
-    dataChannel.close();
-    dataChannel = null;
+export function closeConnection(pc: RTCPeerConnection | null, dc: RTCDataChannel | null): void {
+  if (dc) {
+    dc.close();
   }
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
+  if (pc) {
+    pc.close();
   }
   console.log('WebRTC connection closed.');
-}
-
-// Utility to get current peerConnection (e.g., for page to manage)
-export function getPeerConnection(): RTCPeerConnection | null {
-  return peerConnection;
-}
-
-export function getDataChannel(): RTCDataChannel | null {
-    return dataChannel;
 } 
