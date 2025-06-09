@@ -55,7 +55,7 @@ GPL-3.0 - Because sharing is caring, and also legally required now.
 
 ## Credits
 
-Aidan Leuenberger (@ogyeet10) - Chief Vibecoder and Architect of Chaos
+Aidan Leuenberger (@ogyeet10) - Chief Vibecoder
 
 Built with assistance from:
 - Gemini 2.5 Pro - For when my code actually needed to work
