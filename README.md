@@ -1,6 +1,6 @@
 # chat(lol) 💬
 
-> "Turns out vibecodeing can actually get you pretty damn far" - *Anonymous Developer, 2025*
+> "Turns out vibecoding can actually get you pretty damn far" - *Anonymous Developer, 2025*
 
 ## What the hell is this?
 
@@ -8,8 +8,8 @@ A surprisingly decent P2P chat app that somehow works. Built with Next.js, power
 
 ## The Stack
 
-- **Next.js** - Because we're not animals wrting raw HTML and JS
-- **WebRTC** - for that peer-to-peer goodnees
+- **Next.js** - Because we're not animals writing raw HTML and JS
+- **WebRTC** - For that peer-to-peer goodness
 - **Convex** - Our database that actually makes this thing not suck
 - **shadcn/ui** - Because Bootstrap UI is what your dad uses
 
@@ -35,7 +35,7 @@ pnpm install
 # Set up your Convex stuff
 npx convex dev
 
-# Fire it up (its not that hard to use nextJS guys)
+# Fire it up (it's not that hard to use Next.js guys)
 npm run dev
 ```
 
@@ -47,7 +47,7 @@ Feel free to PR whatever. Just don't break it worse than it already is.
 
 - Sometimes WebRTC decides to be WebRTC
 - Your mom might not understand how to use it
-- May cause your you to realize your app was designed by a colorblind raccoon
+- May cause you to realize your app was designed by a colorblind raccoon
 
 ## License
 
@@ -55,8 +55,9 @@ GPL-3.0 - Because sharing is caring, and also legally required now.
 
 ## Credits
 
-Built with love, questionable decisions, and a surprisingly small ammout of time.
+Aidan Leuenberger (@ogyeet10) - Chief Vibecoder and Architect of Chaos
 
----
-
-*Remember: This is a P2P chat app. We're not storing your messages, but your peer might be. Choose your friends wisely.*
+Built with assistance from:
+- Gemini 2.5 Pro - For when my code actually needed to work
+- Claude 4 Sonnet - For making my UI look nice
+- My sleep schedule, for taking one for the team
