@@ -62,6 +62,11 @@ export const sendFriendRequest = mutation({
         if (existingRequest.status === "pending") {
           return { success: false, error: "Friend request already exists" };
         }
+        if (existingRequest.status === "rejected") {
+          // If the last request was rejected, allow a new one by deleting the old one.
+          // This prevents clutter and allows users to re-request.
+          await ctx.db.delete(existingRequest._id);
+        }
       }
 
       // Create friend request

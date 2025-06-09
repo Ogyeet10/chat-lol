@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useFriends } from '@/hooks/useFriends';
 import { toast } from 'sonner';
+import FriendNotificationBadge from './FriendNotificationBadge';
 
 interface FriendsPanelProps {
   currentUsername: string;
@@ -140,7 +141,7 @@ export default function FriendsPanel({ currentUsername }: FriendsPanelProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4">
       {/* Add Friend Section */}
       <div className="bg-muted/50 rounded-lg p-3 space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium">
@@ -190,11 +191,7 @@ export default function FriendsPanel({ currentUsername }: FriendsPanelProps) {
         >
           <Clock className="h-3 w-3" />
           <span className="ml-1">{pendingRequests.length}</span>
-          {friendRequestCount > 0 && (
-            <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
-              {friendRequestCount > 9 ? '9' : friendRequestCount}
-            </div>
-          )}
+          <FriendNotificationBadge />
         </Button>
         <Button
           variant={activeTab === 'sent' ? 'default' : 'ghost'}

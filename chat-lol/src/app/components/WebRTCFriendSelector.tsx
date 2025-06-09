@@ -252,8 +252,8 @@ export default function WebRTCFriendSelector({ sessionId, isOpen, onClose, onSta
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-grow">
-          <div className="px-4 pb-4">
+        <ScrollArea className="flex-grow p-4">
+          <div className="p-1">
             {/* Content */}
             {step === 'friends' && (
               <div className="space-y-3">

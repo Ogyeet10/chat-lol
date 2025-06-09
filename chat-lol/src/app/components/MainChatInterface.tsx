@@ -219,21 +219,6 @@ export default function MainChatInterface({ currentUsername, sessionId, isSessio
                       Connect to Session
                     </Button>
 
-                    {/* Current Session Info */}
-                    {sessionId && (
-                      <div className="p-3 rounded-lg bg-muted/50 border">
-                        <h3 className="text-sm font-medium mb-2">Your Session</h3>
-                        <div className="space-y-1">
-                          <p className="text-xs font-mono text-muted-foreground break-all">
-                            {sessionId}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Share this ID for others to connect to you
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Pending Connection */}
                     {pendingConnection && (
                       <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">

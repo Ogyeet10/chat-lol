@@ -26,20 +26,34 @@ export default function Home() {
 
   // Check for stored authentication on mount
   useEffect(() => {
-    if (validateToken !== undefined) {
-      if (validateToken && storedAuth.username && tokenToValidate) {
-        // Token is valid, set user and authenticated state
-        setCurrentUser({ token: tokenToValidate, username: validateToken.username });
-        setIsAuthenticated(true);
-      } else {
-        // No token or invalid token, clear auth
-        authStorage.clearAuth();
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-      }
+    // Case 1: No token in storage. User is not authenticated.
+    if (!tokenToValidate) {
+      authStorage.clearAuth();
+      setCurrentUser(null);
+      setIsAuthenticated(false);
       setIsLoading(false);
+      return;
     }
-  }, [validateToken]);
+
+    // Case 2: Token found, waiting for validation from Convex.
+    if (validateToken === undefined) {
+      // Still loading, do nothing until the query resolves.
+      return;
+    }
+
+    // Case 3: Convex has responded.
+    if (validateToken) {
+      // Token is valid.
+      setCurrentUser({ token: tokenToValidate, username: validateToken.username });
+      setIsAuthenticated(true);
+    } else {
+      // Token is invalid.
+      authStorage.clearAuth();
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    }
+    setIsLoading(false);
+  }, [tokenToValidate, validateToken]);
 
   // Handle session initialization on login and cleanup on logout (skip initial)
   const hasSessionInitializedRef = useRef(false);

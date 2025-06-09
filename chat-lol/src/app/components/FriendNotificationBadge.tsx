@@ -47,8 +47,8 @@ export default function FriendNotificationBadge({ className }: FriendNotificatio
   }
 
   return (
-    <div className={`relative ${className}`}>
-      <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium animate-pulse">
+    <div className={`absolute -top-1 -right-2 ${className}`}>
+      <div className="h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold ring-2 ring-background">
         {friendRequestCount > 9 ? '9+' : friendRequestCount}
       </div>
     </div>
