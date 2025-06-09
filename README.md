@@ -61,3 +61,4 @@ Built with assistance from:
 - Gemini 2.5 Pro - For when my code actually needed to work
 - Claude 4 Sonnet - For making my UI look nice
 - My sleep schedule, for taking one for the team
+- James - for the visual inspiration on what a UI should absolutely NOT look like
