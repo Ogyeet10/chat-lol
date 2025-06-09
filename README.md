@@ -55,7 +55,7 @@ GPL-3.0 - Because sharing is caring, and also legally required now.
 
 ## Credits
 
-Built with love, questionable decisions, and a surprising small ammout of time.
+Built with love, questionable decisions, and a surprisingly small ammout of time.
 
 ---
 
