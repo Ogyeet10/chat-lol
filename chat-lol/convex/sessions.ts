@@ -1,4 +1,5 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 
@@ -95,10 +96,7 @@ export const deactivateSession = mutation({
       throw new ConvexError("Session does not belong to this user");
     }
 
-    await ctx.db.patch(session._id, {
-      isActive: false,
-      updatedAt: Date.now(),
-    });
+    await ctx.db.delete(session._id);
 
     return { success: true };
   },
@@ -230,17 +228,46 @@ export const cleanupOldSessions = mutation({
     
     const oldSessions = await ctx.db
       .query("sessions")
-      .withIndex("by_active", (q) => q.eq("isActive", true))
       .filter((q) => q.lt(q.field("lastPing"), oneHourAgo))
       .collect();
 
     for (const session of oldSessions) {
-      await ctx.db.patch(session._id, {
-        isActive: false,
-        updatedAt: Date.now(),
-      });
+      await ctx.db.delete(session._id);
     }
 
     return { cleanedUp: oldSessions.length };
   },
+});
+
+export const deleteSession = internalMutation({
+    args: { sessionId: v.id("sessions") },
+    handler: async (ctx, { sessionId }) => {
+        const session = await ctx.db.get(sessionId);
+        if (session) {
+            await ctx.db.delete(sessionId);
+        }
+    }
+});
+
+// Internal helper to get a user's active session.
+export const _getActiveSessionForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db.query("sessions")
+      .withIndex("by_userId", q => q.eq("userId", userId))
+      .filter(q => q.eq(q.field("isActive"), true))
+      .first();
+  }
+});
+
+// Internal helper to get all active sessions for a user.
+export const _getActiveSessionsForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db
+      .query("sessions")
+      .withIndex("by_userId", q => q.eq("userId", userId))
+      .filter(q => q.eq(q.field("isActive"), true))
+      .collect();
+  }
 });

@@ -51,39 +51,22 @@ export default function ChatRoom(
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
-      <aside className="w-64 bg-muted/40 p-4 border-r flex flex-col space-y-4">
-        <div className="flex items-center space-x-2 p-2">
-          <UserCircle className="h-6 w-6 text-primary" />
-          <h2 className="text-xl font-semibold">My Profile</h2> 
-        </div>
-        <div className="flex-grow p-2 rounded-md border border-dashed border-muted-foreground/30 flex flex-col items-center justify-center space-y-2">
-            <Avatar className="h-16 w-16 border-2 border-primary/50">
-              <AvatarImage src={currentUserPFP || undefined} alt={currentUsername} />
-              <AvatarFallback>{currentUsername.substring(0, 1).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <p className="text-lg font-medium text-center">{currentUsername}</p>
-            <p className="text-xs text-muted-foreground text-center">Local User</p>
-        </div>
-         <p className="text-xs text-muted-foreground text-center">Connection: {connectionStatus}</p>
-         <p className="text-xs text-muted-foreground text-center">Channel: {dataChannelReadyState || 'N/A'}</p>
-      </aside>
-
       <main className="flex-grow flex flex-col h-screen">
-        <header className="p-4 border-b flex justify-between items-center bg-muted/20">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10 border-2 border-accent-foreground/30">
+        <header className="p-2 border-b flex justify-between items-center bg-muted/20">
+          <div className="flex items-center space-x-2">
+            <Avatar className="h-8 w-8">
               <AvatarImage src={peerUserPFP || undefined} alt={peerUsername} />
               <AvatarFallback>{peerUsername.substring(0, 1).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-                <h3 className="font-semibold text-lg">{peerUsername}</h3>
+                <h3 className="font-semibold text-base">{peerUsername}</h3>
                 <p className={`text-xs ${isChatActive ? 'text-green-500' : 'text-orange-500'}`}>
-                  {isChatActive ? "Online & Connected" : (dataChannelReadyState ? `Channel: ${dataChannelReadyState}`: "Offline")}
+                  {isChatActive ? "Connected" : (dataChannelReadyState ? `Channel: ${dataChannelReadyState}`: "Offline")}
                 </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onLeaveChat} className="text-muted-foreground hover:text-destructive">
-            <LogOut className="mr-2 h-4 w-4" /> Leave Chat
+          <Button variant="ghost" size="icon" onClick={onLeaveChat} className="text-muted-foreground hover:text-destructive">
+            <LogOut className="h-4 w-4" />
           </Button>
         </header>
 
@@ -99,7 +82,7 @@ export default function ChatRoom(
           }
           {messages.map((msg, index) => {
             const systemMsgPrefix = "System: ";
-            const currentUserMsgPrefix = `${currentUsername}: `;
+            const currentUserMsgPrefix = `You: `;
 
             const isSystemMessage = msg.startsWith(systemMsgPrefix);
             const isCurrentUserMessage = msg.startsWith(currentUserMsgPrefix);

@@ -45,6 +45,9 @@ export default function SimpleWebRTCChat({
   // Use the passed-in root session ID
   const sessionId = userSessionId;
 
+  const currentUser = useQuery(api.users.getViewer, auth.token ? { token: auth.token } : "skip");
+  const peerUser = useQuery(api.users.getUserBySessionId, targetSessionId ? { sessionId: targetSessionId } : "skip");
+
   const createConnectionOffer = useMutation(api.peerConnections.createConnectionOffer);
   const updateConnectionStatus = useMutation(api.peerConnections.updateConnectionStatus);
   const disconnectConnection = useMutation(api.peerConnections.disconnectConnection);
@@ -65,7 +68,7 @@ export default function SimpleWebRTCChat({
         if (isInitiator) {
           // The offer is created by the parent, and connectionId is passed as 'requestId'
           if (!connectionId) {
-            toast.error("Initialization Error: Connection ID is missing.");
+            // toast.error("Initialization Error: Connection ID is missing.");
             setConnectionStatus("Error: No Connection ID");
             return;
           }
@@ -258,8 +261,10 @@ export default function SimpleWebRTCChat({
       onLeaveChat={handleLeaveChat}
       connectionStatus={connectionStatus}
       dataChannelReadyState={dataChannelState}
-      currentUsername={auth.username || "You"}
-      peerUsername={otherUsername}
+      currentUsername={currentUser?.username}
+      currentUserPFP={currentUser?.imageUrl}
+      peerUsername={peerUser?.username || otherUsername}
+      peerUserPFP={peerUser?.imageUrl}
     />
   );
 } 

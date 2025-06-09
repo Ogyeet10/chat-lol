@@ -1,6 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import { api } from "./_generated/api";
 
 // Send a friend request
 export const sendFriendRequest = mutation({
@@ -236,22 +238,18 @@ export const getFriends = query({
         
         if (!friend) return null;
 
-        // Get their active sessions for online status
-        const activeSessions = await ctx.db
+        // A simple check for recent activity. The detailed check is in getFriendActiveSessions
+        const recentSessions = await ctx.db
           .query("sessions")
           .withIndex("by_userId", (q) => q.eq("userId", friendId))
-          .filter((q) => q.and(
-            q.eq(q.field("isActive"), true),
-            q.gt(q.field("lastPing"), Date.now() - (60 * 60 * 1000)) // Last hour
-          ))
-          .collect();
+          .filter((q) => q.gt(q.field("lastPing"), Date.now() - 5 * 60 * 1000)) // Active in last 5 mins
+          .first();
 
         return {
           userId: friendId,
           username: friend.username,
-          isOnline: activeSessions.length > 0,
-          sessionCount: activeSessions.length,
-          friendsSince: friendship.createdAt,
+          imageUrl: friend.imageUrl,
+          isActive: !!recentSessions,
         };
       })
     );
@@ -329,136 +327,70 @@ const verifyFriendship = async (ctx: any, userId1: any, userId2: any): Promise<b
   return !!friendship;
 };
 
-// Get active sessions for a friend (with friendship verification and server-side ping cleanup)
-export const getFriendActiveSessions = mutation({
+// Get active sessions for a specific friend by pinging them.
+export const getFriendActiveSessions = action({
   args: { 
     friendUserId: v.id("users"),
     userToken: v.string(),
-    performActivePing: v.optional(v.boolean()) // New parameter to control active pinging
   },
-  handler: async (ctx, { friendUserId, userToken, performActivePing = false }) => {
-    // Validate requesting user
-    const requestingUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("token", userToken))
-      .first();
+  handler: async (ctx, { friendUserId, userToken }) => {
+    // 1. Get the current user and their active session.
+    const user = await ctx.runQuery(api.users.getViewer, { token: userToken });
+    if (!user) throw new ConvexError("Invalid user token");
 
-    if (!requestingUser) {
-      throw new ConvexError("Invalid user token");
+    const currentSession = await ctx.runQuery(internal.sessions._getActiveSessionForUser, { userId: user._id });
+    if (!currentSession) {
+      // If the current user has no active session, they can't ping.
+      return { activeSessions: [] };
     }
 
-    // Verify friendship
-    const areFriends = await verifyFriendship(ctx, requestingUser._id, friendUserId);
-    if (!areFriends) {
-      throw new ConvexError("You are not friends with this user");
+    // 2. Get the friend's active sessions.
+    const friendSessions = await ctx.runQuery(internal.sessions._getActiveSessionsForUser, { userId: friendUserId });
+    if (friendSessions.length === 0) {
+      return { activeSessions: [] };
     }
 
-    // Get friend user details
-    const friendUser = await ctx.db.get(friendUserId);
-    if (!friendUser) {
-      throw new ConvexError("Friend user not found");
-    }
-
-    // Get all sessions for the friend (within last hour)
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    const sessions = await ctx.db
-      .query("sessions")
-      .withIndex("by_userId", (q) => q.eq("userId", friendUserId))
-      .filter((q) => q.and(
-        q.eq(q.field("isActive"), true),
-        q.gt(q.field("lastPing"), oneHourAgo)
-      ))
-      .collect();
-
-    const activeSessions = [];
+    // 3. Send pings to all of the friend's active sessions.
+    const pingPromises = friendSessions.map(session => 
+      ctx.runMutation(internal.livePings.send, {
+        fromSessionId: currentSession.sessionId,
+        toSessionId: session.sessionId,
+        userToken,
+      }).then(pingId => ({ pingId, session }))
+    );
+    const pingResults = await Promise.all(pingPromises);
     
-    if (performActivePing) {
-      // Active ping mode: Send ping requests to trigger session responses
-      console.log(`Sending ping requests to ${sessions.length} sessions`);
-      
-      const thirtySecondsAgo = Date.now() - (30 * 1000);
-      
-      for (const session of sessions) {
-        try {
-          // Create a ping request to this session to trigger a response
-          await ctx.db.insert("pingRequests", {
-            fromSessionId: "server-health-check", // Special identifier for server health checks
-            toSessionId: session.sessionId,
-            fromUserId: requestingUser._id,
-            toUserId: friendUserId,
-            status: "pending",
-            requestData: { 
-              type: "session_health_check", 
-              timestamp: Date.now(),
-              requester: requestingUser.username 
-            },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          });
+    // 4. Wait 3 seconds for responses.
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
-          // Check if session has pinged recently (within last 30 seconds)
-          if (session.lastPing > thirtySecondsAgo) {
-            activeSessions.push({
-              sessionId: session.sessionId,
-              lastPing: session.lastPing,
-              createdAt: session.createdAt,
-              timeSinceLastPing: Date.now() - session.lastPing,
-              pingStatus: "recently_active",
-            });
-          } else {
-            // Session hasn't been active recently, mark as inactive
-            await ctx.db.patch(session._id, {
-              isActive: false,
-              updatedAt: Date.now(),
-            });
-            console.log(`Marked inactive session: ${session.sessionId} (no recent activity)`);
-          }
-          
-        } catch (error) {
-          console.error(`Error processing session ${session.sessionId}:`, error);
-          // If there's an error, mark session as inactive
-          await ctx.db.patch(session._id, {
-            isActive: false,
-            updatedAt: Date.now(),
-          });
-        }
-      }
-    } else {
-      // Passive mode: Just check last ping times (original behavior)
-      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-      
-      for (const session of sessions) {
-        // If session hasn't pinged in the last 5 minutes, consider it potentially inactive
-        if (session.lastPing < fiveMinutesAgo) {
-          // Mark session as inactive
-          await ctx.db.patch(session._id, {
-            isActive: false,
-            updatedAt: Date.now(),
-          });
-          console.log(`Cleaned up inactive session: ${session.sessionId}`);
+    // 5. Check which pings were responded to and clean up stale ones.
+    const respondedSessions = await Promise.all(
+      pingResults.map(async ({ pingId, session }) => {
+        const ping = await ctx.runQuery(api.livePings.get, { pingId });
+        
+        if (ping && ping.status === 'responded') {
+          // It's alive, return the session.
+          return session;
         } else {
-          // Session is active
-          activeSessions.push({
-            sessionId: session.sessionId,
-            lastPing: session.lastPing,
-            createdAt: session.createdAt,
-            timeSinceLastPing: Date.now() - session.lastPing,
-            pingStatus: "recent_activity",
-          });
+          // It's stale. Delete the ping and the session document.
+          if (ping) {
+            await ctx.runMutation(internal.livePings.deletePing, { pingId });
+          }
+          await ctx.runMutation(internal.sessions.deleteSession, { sessionId: session._id });
+          return null;
         }
-      }
-    }
+      })
+    );
 
-    return {
-      friendUsername: friendUser.username,
-      friendUserId: friendUserId,
-      activeSessions,
-      totalSessionsFound: sessions.length,
-      activeSessionsCount: activeSessions.length,
-      pingMethod: performActivePing ? "active_ping_requests_sent" : "passive_check",
-      note: performActivePing ? "Ping requests sent to sessions. Sessions should respond automatically." : "Quick check based on recent activity",
-    };
-  },
+    // 6. Filter out nulls and format the response.
+    const activeSessions = respondedSessions
+        .filter((s): s is typeof s & {} => s !== null)
+        .map(s => ({
+            sessionId: s.sessionId,
+        }));
+
+    return { activeSessions };
+  }
 });
 
 // Get all friends with their active session counts (for the friend selection UI)

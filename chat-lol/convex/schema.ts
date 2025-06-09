@@ -6,6 +6,8 @@ export default defineSchema({
     username: v.string(),
     token: v.string(),
     createdAt: v.number(),
+    storageId: v.optional(v.id("_storage")),
+    imageUrl: v.optional(v.string()),
   }).index("by_username", ["username"]).index("by_token", ["token"]),
 
   sessions: defineTable({
@@ -66,5 +68,11 @@ export default defineSchema({
     .index("by_targetSessionId", ["targetSessionId", "status"])
     .index("by_connectionId", ["connectionId"])
     .index("by_peerId", ["peerId"]),
+
+  livePings: defineTable({
+    pingerSessionId: v.string(),
+    targetSessionId: v.string(),
+    status: v.union(v.literal("sent"), v.literal("responded")),
+  }).index("by_target", ["targetSessionId", "pingerSessionId"]),
 
 });

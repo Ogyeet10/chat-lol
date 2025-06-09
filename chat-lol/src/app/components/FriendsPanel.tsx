@@ -230,7 +230,7 @@ export default function FriendsPanel({ currentUsername }: FriendsPanelProps) {
                       <div>
                         <p className="text-xs font-medium">{friend.username}</p>
                         <p className="text-xs text-muted-foreground">
-                          {friend.isOnline ? (
+                          {friend.isActive ? (
                             <span className="text-green-500">● Online</span>
                           ) : (
                             'Offline'
