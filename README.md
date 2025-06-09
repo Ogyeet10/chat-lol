@@ -1,6 +1,6 @@
 # chat(lol) 💬
 
-> "Turns out vibecodig can actually get you pretty damn far" - *Anonymous Developer, 2025*
+> "Turns out vibecodeing can actually get you pretty damn far" - *Anonymous Developer, 2025*
 
 ## What the hell is this?
 
