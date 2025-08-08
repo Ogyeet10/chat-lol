@@ -25,7 +25,7 @@ A surprisingly decent P2P chat app that somehow works. Built with Next.js, power
 
 ```bash
 # Grab the code
-git clone https://github.com/yourusername/chat-lol.git
+git clone https://github.com/ogyeet10/chat-lol.git
 
 # Install dependencies
 npm install
