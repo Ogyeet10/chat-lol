@@ -1,6 +1,6 @@
 # chat(lol) 💬
 
-> "Turns out vibecoding can actually get you pretty damn far" - *Anonymous Developer, 2025*
+FYI: I made this project just to one-up my friend because I was bored. So if the README feels a little weird, that’s why. The project itself? Actually pretty cool.
 
 ## What the hell is this?
 
@@ -15,7 +15,7 @@ A surprisingly decent P2P chat app that somehow works. Built with Next.js, power
 
 ## Features That Actually Work
 
-- Real P2P messaging (no servers reading your shit)
+- P2P messaging
 - Looks pretty good (thanks shadcn)
 - Actually reliable (thanks Convex)
 - Won't make your laptop sound like a jet engine
@@ -47,7 +47,6 @@ Feel free to PR whatever. Just don't break it worse than it already is.
 
 - Sometimes WebRTC decides to be WebRTC
 - Your mom might not understand how to use it
-- May cause you to realize your app was designed by a colorblind raccoon
 
 ## License
 
@@ -55,10 +54,11 @@ GPL-3.0 - Because sharing is caring, and also legally required now.
 
 ## Credits
 
-Aidan Leuenberger (@ogyeet10) - Chief Vibecoder
+Aidan Leuenberger (@ogyeet10) - Me
 
 Built with assistance from:
 - Gemini 2.5 Pro - For when my code actually needed to work
+- **Me** – Because AI doesn’t write *all* my code... yet.
 - Claude 4 Sonnet - For making my UI look nice
 - My sleep schedule, for taking one for the team
 - James - for the visual inspiration on what a UI should absolutely NOT look like
