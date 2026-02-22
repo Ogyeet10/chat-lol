@@ -38,7 +38,7 @@ npx convex dev
 # Fire it up (it's not that hard to use Next.js guys)
 npm run dev
 ```
-> or just use the link on the sidebar
+> or just use the link on the sidebar. add me @aidan
 
 ## Contributing
 
