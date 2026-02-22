@@ -4,7 +4,7 @@ FYI: I made this project just to one-up my friend because I was bored. So if the
 
 ## What the hell is this?
 
-A surprisingly decent P2P chat app that somehow works. Built with Next.js, powered by WebRTC, backed by Convex, and made pretty with shadcn/ui. Because sometimes you just need to chat without the corporate overlords watching.
+A surprisingly decent P2P chat app that somehow works. Built with Next.js, powered by WebRTC, backed by Convex, and made pretty with shadcn/ui.
 
 ## The Stack
 
@@ -13,7 +13,7 @@ A surprisingly decent P2P chat app that somehow works. Built with Next.js, power
 - **Convex** - Our database that actually makes this thing not suck
 - **shadcn/ui** - Because Bootstrap UI is what your dad uses
 
-## Features That Actually Work
+## Features
 
 - P2P messaging
 - Looks pretty good (thanks shadcn)
@@ -38,6 +38,7 @@ npx convex dev
 # Fire it up (it's not that hard to use Next.js guys)
 npm run dev
 ```
+> or just use the link on the sidebar
 
 ## Contributing
 
@@ -57,8 +58,6 @@ GPL-3.0 - Because sharing is caring, and also legally required now.
 Aidan Leuenberger (@ogyeet10) - Me
 
 Built with assistance from:
-- Gemini 2.5 Pro - For when my code actually needed to work
 - **Me** – Because AI doesn’t write *all* my code... yet.
-- Claude 4 Sonnet - For making my UI look nice
 - My sleep schedule, for taking one for the team
-- James - for the visual inspiration on what a UI should absolutely NOT look like
+- James - for the visual inspiration on what a UI should absolutely NOT look like (long story)
