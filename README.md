@@ -1,6 +1,6 @@
 # chat(lol) 💬
 
-FYI: I made this project just to one-up my friend because I was bored. So if the README feels a little weird, that’s why. The project itself? Actually pretty cool.
+FYI: I made this project just to one-up my friend because I was bored. So if the README feels a little weird, that’s why.
 
 ## What the hell is this?
 
